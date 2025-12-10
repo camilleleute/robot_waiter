@@ -34,7 +34,7 @@ class waiter(Node):
 		# Subscriber for keyboard teleop
 		self.teleop_sub = self.create_subscription(TwistStamped, '/teleop_cmds', self.teleop_callback, 10)
 		self.last_teleop = TwistStamped()
-		self.autonomous = True	# set when robot is not being controlled manually by keyboard
+		self.autonomous = False	# set when robot is not being controlled manually by keyboard
 
         # Initial state
         self.state = 'idle'
