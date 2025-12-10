@@ -31,14 +31,14 @@ class waiter(Node):
             qos_profile_sensor_data
         )
 
-		# Subscriber for keyboard teleop
-		self.teleop_sub = self.create_subscription(TwistStamped, '/teleop_cmds', self.teleop_callback, 10)
-		self.last_teleop = TwistStamped()
-		self.autonomous = False	# set when robot is not being controlled manually by keyboard
+        # Subscriber for keyboard teleop
+        self.teleop_sub = self.create_subscription(TwistStamped, '/teleop_cmds', self.teleop_callback, 10)
+        self.last_teleop = TwistStamped()
+        self.autonomous = False  # set when robot is not being controlled manually by keyboard
 
         # Initial state
         self.state = 'idle'
-        
+
         # Timer for different movements
         self.back_s = 0
         self.wait_s = 0
@@ -49,12 +49,12 @@ class waiter(Node):
     def lidar_callback(self, msg: LaserScan):
         self.get_logger().info('LiDAR callback...')
         n = len(msg.ranges)
-                
+
         # Process front sector with angles
         front_vals = []
         front_weighted_sum = 0.0
         front_weight_total = 0.0
-        
+
         # front sector (indices 0 to n//3 and 2*n//3 to n)
         for i in list(range(0, n//3)) + list(range(2*n//3, n)):
             r = msg.ranges[i]
@@ -65,78 +65,78 @@ class waiter(Node):
                     weight = 1.0 / (r * r + 0.1)
                     front_weighted_sum += math.sin(angle) * weight
                     front_weight_total += weight
-        
+
         self.closest_front = min(front_vals) if front_vals else float('inf')
         self.get_logger().info(f'FSM: state={self.state}; front={self.closest_front}; back={self.closest_back}')
-        
-		if self.state == 'forward':
+
+        if self.state == 'forward':
             # obstacle detected less than 1 meter in front, move back
             if self.closest_front < 1:
                 self.state = 'wait'
                 self.get_logger().info('Human in center of camera, waiting for pickup.')
                 self.wait_s = time.time()
-            
+
         elif self.state == 'wait':
             if time.time() - self.wait_s > 60.0:
                 self.state = 'back'
                 self.get_logger().info('Waiting complete, moving back.')
                 self.back_s = time.time()
-            
+
         elif self.state == 'back':
             if time.time() - self.back_s > 3.0:
                 self.state = 'idle'
-				self.autonomous = True
+                self.autonomous = True
                 self.get_logger().info('Backed up complete, switching to manual control')
-    
+
     def control_callback(self):
         self.get_logger().info('Control callback')
-		ts = TwistStamped()
+        ts = TwistStamped()
         t = Twist()
-		
-		if self.autonomous:
-  			if self.state == 'turn':
-				# turn towards the human until it is in the center of the camera
-				if self.human_pos:
-					offset = self.human_pos[0] - 320	# get distance from person to camera center
-					if(abs(offset) > 50):
-						t.angular.z = -0.1 * offset/320
-					else:
-						t.angular.z = 0.0
-						self.state = 'forward'
-						self.get_logger().info("Facing human, moving forward now")
-				else:
-					t.angular.z = 0.0
-					self.state = 'idle'
-					self.get_logger().info("No human detected, going idle")
-			elif self.state == 'forward':
-            	t.linear.x = 0.2
-            	t.angular.z = 0.0
-			elif self.state == 'wait':
-				t.linear.x = 0.0
-				t.angular.z = 0.0
-        	elif self.state == 'back':
-            	t.linear.x = -0.2
-            	t.angular.z = 0.0
-			else:
-            	t.linear.x = 0.0
-            	t.angular.z = 0.0
-			ts.twist = t
-		else:
-			ts.twist = self.last_teleop
+
+        if self.autonomous:
+            if self.state == 'turn':
+                # turn towards the human until it is in the center of the camera
+                if self.human_pos:
+                    offset = self.human_pos[0] - 320  # get distance from person to camera center
+                    if(abs(offset) > 50):
+                        t.angular.z = -0.1 * offset/320
+                    else:
+                        t.angular.z = 0.0
+                        self.state = 'forward'
+                        self.get_logger().info("Facing human, moving forward now")
+                else:
+                    t.angular.z = 0.0
+                    self.state = 'idle'
+                    self.get_logger().info("No human detected, going idle")
+            elif self.state == 'forward':
+                t.linear.x = 0.2
+                t.angular.z = 0.0
+            elif self.state == 'wait':
+                t.linear.x = 0.0
+                t.angular.z = 0.0
+            elif self.state == 'back':
+                t.linear.x = -0.2
+                t.angular.z = 0.0
+            else:
+                t.linear.x = 0.0
+                t.angular.z = 0.0
+            ts.twist = t
+        else:
+            ts.twist = self.last_teleop
 
         ts.header.stamp = self.get_clock().now().to_msg()
         ts.header.frame_id = 'base_link'
         self.cmd_vel_pub.publish(ts)
         self.get_logger().info(f'Publishing vel (x{t.linear.x}, z={t.angular.z})...')
 
-	def teleop_callback(self, msg):
-		self.last_teleop = msg
-	
+    def teleop_callback(self, msg):
+        self.last_teleop = msg
+
 def main(args=None):
     rclpy.init(args=args)
     node = waiter()
 
     rclpy.spin(node)
-    
+
     node.destroy_node()
     rclpy.shutdown()
