@@ -32,7 +32,7 @@ class waiter(Node):
         )
 
 		# Subscriber for keyboard teleop
-		self.teleop_sub = self.create_subscription(TwistStamped, '/gobilda/cmd_vel', self.teleop_callback, 10)
+		self.teleop_sub = self.create_subscription(TwistStamped, '/teleop_cmds', self.teleop_callback, 10)
 		
 		self.last_teleop = TwistStamped()
 
@@ -84,20 +84,21 @@ class waiter(Node):
         if self.state == 'forward':
             # obstacle detected less than 1 meter in front, move back
             if self.closest_front < 1:
+                self.state = 'wait'
+                self.get_logger().info('Human in center of camera, waiting for pickup.')
+                self.wait_s = time.time()
+            
+        elif self.state == 'wait':
+            if time.time() - self.wait_s > 60.0:
                 self.state = 'back'
-                self.get_logger().info('Obstacle detected, moving back...')
+                self.get_logger().info('Waiting complete, moving back.')
                 self.back_s = time.time()
             
         elif self.state == 'back':
-            if time.time() - self.back_s > 3.0 or self.closest_back < 1:
-                self.state = 'turn'
-                self.get_logger().info('Backing up complete, turning...')
-                self.turn_s = time.time()
-            
-        elif self.state == 'turn':
-            if time.time() - self.turn_s > 3.0 or self.closest_front > 4.0:
-                self.state = 'forward'
-                self.get_logger().info('Turning complete, moving forward...')
+            if time.time() - self.back_s > 3.0:
+                self.state = 'idle'
+				self.autonomous = True
+                self.get_logger().info('Backed up complete, switching to manual control')
 
         elif self.state == 'stop':
             self.state = 'forward'
@@ -126,30 +127,14 @@ class waiter(Node):
 
         	# set velocities
         	elif self.state == 'forward':
-				if self.closest_front < 0.3:
-					t.linear.x = 0.0
-					self.state = 'wait'
-					self.wait_s = time.time()
-					self.get_logger().info("Reached human, waiting")
-				else:
-            		t.linear.x = 0.2
-            		t.angular.z = 0.0
-					self.get_logger().info("Moving forward")
+            	t.linear.x = 0.2
+            	t.angular.z = 0.0
 			elif self.state == 'wait':
-				if time.time() - self.wait_s > 60:
-					self.state = 'back'
-					self.back_s = time.time()
-					self.get_logger().info("Order has been picked up, moving back")
-        
+				t.linear.x = 0.0
+				t.angular.z = 0.0
         	elif self.state == 'back':
-				if time.time() - self.back_s > 3:
-					self.state = 'idle'
-					t.linear.x = 0.0
-					t.angular.z = 0.0
-					self.autonomous = True
-				else:
-            		t.linear.x = -0.2
-            		t.angular.z = 0.0
+            	t.linear.x = -0.2
+            	t.angular.z = 0.0
 			else:
             	t.linear.x = 0.0
             	t.angular.z = 0.0
@@ -167,7 +152,7 @@ class waiter(Node):
 	
 def main(args=None):
     rclpy.init(args=args)
-    node = BumpAndGo()
+    node = waiter()
 
     rclpy.spin(node)
     
