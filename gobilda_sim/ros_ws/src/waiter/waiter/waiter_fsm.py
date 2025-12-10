@@ -41,7 +41,7 @@ class waiter(Node):
         
         # Timer for different movements
         self.back_s = 0
-        self.turn_s = 0
+        self.wait_s = 0
         self.last_lidar_s = 0
         self.lidar_timeout = 1.0
 
