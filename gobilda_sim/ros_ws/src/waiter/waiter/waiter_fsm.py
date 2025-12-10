@@ -42,18 +42,12 @@ class waiter(Node):
         # Timer for different movements
         self.back_s = 0
         self.wait_s = 0
-        self.last_lidar_s = 0
-        self.lidar_timeout = 1.0
 
         self.closest_front = float('inf')
-        self.closest_back = float('inf')
-
         self.create_timer(0.1, self.control_callback)
 
     def lidar_callback(self, msg: LaserScan):
         self.get_logger().info('LiDAR callback...')
-        self.last_lidar_s = time.time()
-
         n = len(msg.ranges)
                 
         # Process front sector with angles
@@ -73,8 +67,6 @@ class waiter(Node):
                     front_weight_total += weight
         
         self.closest_front = min(front_vals) if front_vals else float('inf')
-        
-        self.front_obstacle_direction = front_weighted_sum / front_weight_total if front_weight_total > 0 else 0.0
         self.get_logger().info(f'FSM: state={self.state}; front={self.closest_front}; back={self.closest_back}')
         
 		if self.state == 'forward':
