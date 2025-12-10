@@ -108,9 +108,7 @@ class waiter(Node):
 					t.angular.z = 0.0
 					self.state = 'idle'
 					self.get_logger().info("No human detected, going idle")
-
-        	# set velocities
-        	elif self.state == 'forward':
+			elif self.state == 'forward':
             	t.linear.x = 0.2
             	t.angular.z = 0.0
 			elif self.state == 'wait':
