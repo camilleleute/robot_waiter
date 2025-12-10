@@ -33,13 +33,11 @@ class waiter(Node):
 
 		# Subscriber for keyboard teleop
 		self.teleop_sub = self.create_subscription(TwistStamped, '/teleop_cmds', self.teleop_callback, 10)
-		
 		self.last_teleop = TwistStamped()
-
-		self.autonomous = True
+		self.autonomous = True	# set when robot is not being controlled manually by keyboard
 
         # Initial state
-        self.state = 'IDLE'
+        self.state = 'idle'
         
         # Timer for different movements
         self.back_s = 0
@@ -77,11 +75,9 @@ class waiter(Node):
         self.closest_front = min(front_vals) if front_vals else float('inf')
         
         self.front_obstacle_direction = front_weighted_sum / front_weight_total if front_weight_total > 0 else 0.0
-
-
-
         self.get_logger().info(f'FSM: state={self.state}; front={self.closest_front}; back={self.closest_back}')
-        if self.state == 'forward':
+        
+		if self.state == 'forward':
             # obstacle detected less than 1 meter in front, move back
             if self.closest_front < 1:
                 self.state = 'wait'
@@ -99,17 +95,13 @@ class waiter(Node):
                 self.state = 'idle'
 				self.autonomous = True
                 self.get_logger().info('Backed up complete, switching to manual control')
-
-        elif self.state == 'stop':
-            self.state = 'forward'
-
     
     def control_callback(self):
         self.get_logger().info('Control callback')
 		ts = TwistStamped()
         t = Twist()
 		
-		if not self.autonomous:
+		if self.autonomous:
   			if self.state == 'turn':
 				# turn towards the human until it is in the center of the camera
 				if self.human_pos:
