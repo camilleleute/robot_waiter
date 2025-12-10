@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist, TwistStamped
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Header
 from rclpy.qos import qos_profile_sensor_data
 import time
 import math
@@ -135,8 +135,8 @@ class waiter(Node):
             		t.linear.x = 0.2
             		t.angular.z = 0.0
 					self.get_logger().info("Moving forward")
-			elif self.state = 'wait':
-				if time.time() = self.wait_s > 60:
+			elif self.state == 'wait':
+				if time.time() - self.wait_s > 60:
 					self.state = 'back'
 					self.back_s = time.time()
 					self.get_logger().info("Order has been picked up, moving back")
